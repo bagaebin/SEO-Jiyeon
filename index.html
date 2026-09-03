@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>SEO Jiyeon — Digital Business Card</title>
+<meta name="description" content="화면에 사각형을 그리면 그 비율에 맞춰 실시간으로 조판되는 디지털 명함.">
+<meta name="theme-color" content="#0d0f12">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 배경: 카메라 실시간 뷰 / 실패 시 임시 하늘 사진 -->
+<div class="backdrop">
+  <video id="cam" playsinline muted autoplay></video>
+  <img id="sky" src="assets/sky.jpg" alt="">
+</div>
+
+<!-- 드로잉 스테이지 -->
+<main id="stage" aria-label="명함을 그릴 영역">
+
+  <!-- 그려진 사각형 = 명함 -->
+  <section id="card" aria-label="SEO Jiyeon 명함">
+    <div class="grid" aria-hidden="true"></div>
+    <span class="f" data-slot="role"><span class="t">Director</span></span>
+    <span class="f" data-slot="places"><span class="t">Busan</span><span class="t">Paris</span></span>
+    <span class="f" data-slot="name"><span class="t">SEO Jiyeon</span></span>
+    <a class="f act" data-slot="email" href="#" draggable="false"><span class="t">hello@seojiyeon.studio</span></a>
+    <a class="f act" data-slot="phone" href="#" draggable="false"><span class="t">+82 10 1234 5678</span></a>
+  </section>
+
+  <!-- 실시간 계산 값 -->
+  <div id="readout" aria-live="off"><span id="ro-size"></span><span id="ro-ratio"></span><span id="ro-grid">16 × 12</span></div>
+</main>
+
+<!-- 크롬 -->
+<header class="chrome">
+  <p class="mark">DIGITAL BUSINESS CARD<span>2026.09.04</span></p>
+  <div class="tools">
+    <button id="btn-grid" type="button" aria-pressed="false" title="그리드 보기">GRID</button>
+    <button id="btn-reset" type="button" title="기본 비율로 되돌리기">RESET</button>
+  </div>
+</header>
+
+<footer id="hint" class="hint">
+  <span class="hint-main">화면을 <b>드래그</b>해 명함을 그리세요 &nbsp;·&nbsp; 정보를 <b>탭</b>하면 연결됩니다</span>
+  <button id="btn-cam" type="button" hidden>카메라 켜기</button>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
