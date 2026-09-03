@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <title>SEO Jiyeon — Digital Business Card</title>
-<meta name="description" content="화면에 사각형을 그리면 그 비율에 맞춰 실시간으로 조판되는 디지털 명함.">
-<meta name="theme-color" content="#0d0f12">
+<meta name="description" content="화면에 사각형을 그리면 그 비율에 맞춰 실시간으로 조판되는 디지털 명함. 한 번 더 누르면 흰 면이 펀칭된다.">
+<meta name="theme-color" content="#14161a">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
@@ -13,10 +13,10 @@
 </head>
 <body>
 
-<!-- 배경: 카메라 실시간 뷰 / 실패 시 임시 하늘 사진 -->
+<!-- 페이지 배경: 카메라 실시간 뷰 (미허용 시 무채색 바탕) -->
 <div class="backdrop">
+  <div id="ground"></div>
   <video id="cam" playsinline muted autoplay></video>
-  <img id="sky" src="assets/sky.jpg" alt="">
 </div>
 
 <!-- 드로잉 스테이지 -->
@@ -24,16 +24,30 @@
 
   <!-- 그려진 사각형 = 명함 -->
   <section id="card" aria-label="SEO Jiyeon 명함">
-    <div class="grid" aria-hidden="true"></div>
-    <span class="f" data-slot="role"><span class="t">Director</span></span>
-    <span class="f" data-slot="places"><span class="t">Busan</span><span class="t">Paris</span></span>
-    <span class="f" data-slot="name"><span class="t">SEO Jiyeon</span></span>
-    <a class="f act" data-slot="email" href="#" draggable="false"><span class="t">hello@seojiyeon.studio</span></a>
-    <a class="f act" data-slot="phone" href="#" draggable="false"><span class="t">+82 10 1234 5678</span></a>
+
+    <!-- 카메라를 못 쓸 때, 뚫린 자리에 드러나는 임시 하늘 사진 -->
+    <img id="sky" src="assets/sky.jpg" alt="">
+
+    <!-- 백색 단색 면. 탭한 지점에서부터 원형으로 펀칭된다 -->
+    <div class="paper" id="paper"></div>
+
+    <!-- 흰 면 위의 내용(검정) -->
+    <div class="content" id="content">
+      <div class="grid" aria-hidden="true"></div>
+      <span class="f" data-slot="role"><span class="t">Director</span></span>
+      <span class="f" data-slot="places"><span class="t">Busan, Paris</span></span>
+      <span class="f" data-slot="name"><span class="t">SEO Jiyeon</span></span>
+      <a class="f act" data-slot="email" href="#" draggable="false"><span class="t"></span></a>
+      <span class="f" data-slot="phone"></span>
+    </div>
+
+    <!-- 뚫린 자리에 남는 흰 텍스트 -->
+    <div class="content" id="content-ghost" aria-hidden="true"></div>
+
   </section>
 
   <!-- 실시간 계산 값 -->
-  <div id="readout" aria-live="off"><span id="ro-size"></span><span id="ro-ratio"></span><span id="ro-grid">16 × 12</span></div>
+  <div id="readout"><span id="ro-size"></span><span id="ro-ratio"></span><span>16 × 12</span></div>
 </main>
 
 <!-- 크롬 -->
@@ -46,7 +60,7 @@
 </header>
 
 <footer id="hint" class="hint">
-  <span class="hint-main">화면을 <b>드래그</b>해 명함을 그리세요 &nbsp;·&nbsp; 정보를 <b>탭</b>하면 연결됩니다</span>
+  <span class="hint-main"><b>드래그</b> 명함 그리기 &nbsp;·&nbsp; <b>명함 탭</b> 펀칭 &nbsp;·&nbsp; <b>정보 탭</b> 연결</span>
   <button id="btn-cam" type="button" hidden>카메라 켜기</button>
 </footer>
 
