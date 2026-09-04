@@ -310,7 +310,7 @@ async function startCamera(){
     camEl.play().catch(() => {});
     document.body.classList.add('cam-on');
   }catch{
-    document.body.classList.remove('cam-on');   // → assets/sky.jpg
+    document.body.classList.remove('cam-on');   // → assets/fallback.jpg
   }
 }
 

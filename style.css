@@ -180,7 +180,7 @@ body.cam-on #cam{opacity:1}
   font-size:var(--meta);letter-spacing:.01em;text-align:right;
 }
 [data-slot="phone"] .act{display:block;max-width:100%}
-[data-slot="phone"] .act + .act{margin-top:.28em}
+/* 두 번호 사이 여백 없음 — 이메일이 줄바꿈될 때의 행간과 같아진다 */
 
 /* 각 정보를 터치하면 contact. 밑줄은 줄바꿈된 각 줄을 따라간다 */
 .act{cursor:pointer;color:inherit;text-decoration:none}

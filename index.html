@@ -8,13 +8,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 
-<!-- 뚫린 구멍으로만 보이는 층: 카메라 (없으면 임시 하늘 사진) -->
+<!-- 뚫린 구멍으로만 보이는 층: 카메라 (못 쓸 때는 대체 이미지) -->
 <div class="backdrop">
-  <img id="sky" src="assets/sky.jpg" alt="">
+  <img id="fallback" src="assets/fallback.jpg" alt="">
   <video id="cam" playsinline muted autoplay></video>
 </div>
 
@@ -48,6 +48,6 @@
   </section>
 </main>
 
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>
