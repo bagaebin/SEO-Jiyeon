@@ -3,8 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<title>SEO Jiyeon — Digital Business Card</title>
-<meta name="description" content="흰 종이 위에 사각형을 그려 마스킹 영역을 정하고, 그 자리를 뚫어내는 디지털 명함.">
+<title>SEO Jiyeon</title>
 <meta name="theme-color" content="#ffffff">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,46 +26,27 @@
   <div class="panel" id="pn-right"></div>
 </div>
 
-<!-- 드로잉 스테이지 -->
 <main id="stage" aria-label="명함을 그릴 영역">
-
-  <!-- 그려진 사각형 = 마스킹 영역 -->
   <section id="card" aria-label="SEO Jiyeon 명함">
 
-    <!-- 뚫린 자리에 남는 흰 텍스트 -->
-    <div class="content" id="hole-text"></div>
+    <!-- 뚫려 나가는 조각 (빈 흰 면) -->
+    <div id="flap"></div>
 
-    <!-- 뚫려 나가는 조각: 흰 면 + 검정 텍스트 -->
-    <div id="flap">
-      <div class="content" id="content">
-        <div class="grid" aria-hidden="true"></div>
-        <span class="f" data-slot="role"><span class="t">Director</span></span>
-        <span class="f" data-slot="places"><span class="t">Busan, Paris</span></span>
-        <span class="f" data-slot="name"><span class="t">SEO Jiyeon</span></span>
-        <a class="f act" data-slot="email" href="#" draggable="false"><span class="t"></span></a>
-        <span class="f" data-slot="phone"></span>
-      </div>
+    <!-- 그려진 영역을 표시하는 안쪽 그림자 → 뚫린 뒤에는 구멍의 두께가 된다.
+         조각 위, 텍스트 아래에 둔다(텍스트를 어둡게 덮지 않도록) -->
+    <div id="rim"></div>
+
+    <!-- 구멍 안에서만 드러나는 텍스트 -->
+    <div class="content" id="content">
+      <span class="f" data-slot="role"><span class="t">Director</span></span>
+      <span class="f" data-slot="places"><span class="t">Busan, Paris</span></span>
+      <span class="f" data-slot="name"><span class="t">SEO Jiyeon</span></span>
+      <a class="f act" data-slot="email" href="#" draggable="false"><span class="t"></span></a>
+      <span class="f" data-slot="phone"></span>
     </div>
 
   </section>
-
-  <!-- 실시간 계산 값 -->
-  <div id="readout"><span id="ro-size"></span><span id="ro-ratio"></span><span>16 × 12</span></div>
 </main>
-
-<!-- 크롬 -->
-<header class="chrome">
-  <p class="mark">DIGITAL BUSINESS CARD<span>2026.09.04</span></p>
-  <div class="tools">
-    <button id="btn-grid" type="button" aria-pressed="false" title="그리드 보기">GRID</button>
-    <button id="btn-reset" type="button" title="기본 비율로 되돌리기">RESET</button>
-  </div>
-</header>
-
-<footer id="hint" class="hint">
-  <span class="hint-main"><b>드래그</b> 영역 지정 &nbsp;·&nbsp; <b>탭</b> 뚫어내기 &nbsp;·&nbsp; <b>정보 탭</b> 연결</span>
-  <button id="btn-cam" type="button" hidden>카메라 켜기</button>
-</footer>
 
 <script src="app.js"></script>
 </body>

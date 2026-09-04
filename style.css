@@ -2,21 +2,18 @@
    SEO Jiyeon — Digital Business Card
    26.09.04 수업 노트 구현
 
-   화면 전체가 흰 종이다. 드래그로 마스킹 영역을 정하고, 탭하면
-   그 사각형이 들렸다가 아래로 떨어지면서 구멍이 뚫린다.
-   구멍으로는 카메라(없으면 하늘 사진)가 보이고, 텍스트는 흰색으로 남는다.
+   화면 전체가 흰 종이다. 드래그로 영역을 그리면 안쪽 그림자로만 표시되고,
+   그 자리를 탭하면 사각형이 들렸다가 아래로 떨어지면서 구멍이 뚫린다.
+   그때 비로소 구멍 안에 텍스트가 흰색으로 드러난다.
 
-   · 16 × 12 Grid  · margin 없음  · 넘치는 텍스트는 줄임표(…)
-   · 가운데 2열(c7·c8)은 항상 비운다 → 항목당 최대 7열
+   · 16 × 12 Grid  · margin 없음  · 가운데 2열(c7·c8)과 r3·r8 은 항상 여백
+   · 폭이 모자라면 줄바꿈, 최소 폰트 크기까지 줄이고도 모자라면 줄임표(…)
    ───────────────────────────────────────────────────────────── */
 
 :root{
   --paper:#fff;
-  --ink:#0d0f12;
-  --chrome:rgba(13,15,18,.62);
   --font:"Inter","Helvetica Neue",Helvetica,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-
-  --close:.46s;                        /* 구멍이 닫히는 시간 */
+  --close:.46s;
   --ease-close:cubic-bezier(.4,0,.2,1);
 }
 
@@ -57,28 +54,38 @@ body.cam-on #cam{opacity:1}
   cursor:crosshair;
 }
 
-/* ── 마스킹 영역 ────────────────────────────────────────────── */
+/* ── 그려진 영역 ────────────────────────────────────────────── */
 #card{
-  --rule:rgba(13,15,18,.14);
   position:absolute;top:0;left:0;
   width:0;height:0;
   opacity:0;
   transition:opacity .25s ease;
 }
 #card.on{opacity:1}
-#card:not(.on){pointer-events:none}   /* 그리기 전에는 잡히지도 않는다 */
-body.drawing .f{pointer-events:none}
+#card:not(.on){pointer-events:none}
 #card,#card a{-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
 
-/* 뚫려 나가는 조각 */
+/* 뚫려 나가는 조각 — 빈 흰 면 */
 #flap{
   position:absolute;inset:0;
   background:var(--paper);
-  overflow:hidden;
   transition:opacity .28s ease;
   will-change:transform;
 }
-#card.closing #flap{opacity:0;transition-duration:.12s}   /* 구멍이 닫히는 동안 비켜 있는다 */
+#card.closing #flap{opacity:0;transition-duration:.12s}
+
+/* 그려진 영역의 표시. 뚫린 뒤에는 구멍의 두께가 된다 */
+#rim{
+  position:absolute;inset:0;
+  pointer-events:none;
+  box-shadow:inset 0 0 30px rgba(13,15,18,.20),
+             inset 0 0 2px  rgba(13,15,18,.30);
+  transition:box-shadow .45s ease;
+}
+#card.punched #rim{
+  box-shadow:inset 0 0 16px rgba(0,0,0,.34),
+             inset 0 0 1px  rgba(0,0,0,.4);
+}
 
 /* 들렸다가 아래로 떨어진다 */
 @keyframes punch-fall{
@@ -97,40 +104,23 @@ body.drawing .f{pointer-events:none}
     box-shadow:0 26px 46px -20px rgba(0,0,0,0);
   }
 }
-#card.punched #flap{
-  animation:punch-fall .82s forwards;
-  pointer-events:none;
-}
+#card.punched #flap{animation:punch-fall .82s forwards;pointer-events:none}
 
-/* ── 내용 층 ────────────────────────────────────────────────── */
-.content{position:absolute;inset:0;color:var(--ink)}
-/* 구멍 안에서만 존재한다. 닫혀 있을 때 흰 텍스트의 그림자가
-   흰 종이 위로 비쳐 보이지 않도록 아예 숨긴다 */
-#hole-text{
-  --ink:#fff;
-  --rule:rgba(255,255,255,.45);
+/* ── 구멍 안 텍스트 ─────────────────────────────────────────── */
+.content{
+  position:absolute;inset:0;
+  color:#fff;
   text-shadow:0 1px 16px rgba(0,0,0,.3);
   opacity:0;
   transition:opacity .18s ease;
 }
-#card.punched #hole-text{opacity:1;transition-duration:0s}
-
-/* 16 × 12 그리드 오버레이 */
-.grid{
-  position:absolute;inset:0;
-  opacity:0;
-  transition:opacity .2s ease;
-  background-image:
-    repeating-linear-gradient(to right,  var(--rule) 0 1px, transparent 1px 6.25%),
-    repeating-linear-gradient(to bottom, var(--rule) 0 1px, transparent 1px 8.3333%);
-}
-body.drawing .grid,body.grid-on .grid{opacity:1}
-/* 그리드를 켰을 때만 마스킹 영역의 경계를 보여준다 */
-body.grid-on #flap{box-shadow:0 0 0 1px var(--rule) inset}
+#card.punched .content{opacity:1;transition-duration:0s}
+/* 뚫기 전에는 보이지도, 잡히지도 않는다 (탭은 조각이 받아 펀칭으로 간다) */
+#card:not(.punched) .content{pointer-events:none}
 
 /* ── 슬롯 = 그리드 좌표. margin 없음 ────────────────────────
-   가운데 2열(c7·c8)은 항상 비운다:
-   왼쪽 항목은 c0–c7, 오른쪽 항목은 c9–c16 → 각각 7열(43.75%) */
+   가운데 2열(c7·c8)은 항상 비운다 → 왼쪽 c0-7, 오른쪽 c9-16 (각 7열)
+   행은 r0-2 상단 · r3 여백 · r4-7 이름 · r8 여백 · r9-11 하단 */
 .f{
   position:absolute;
   display:flex;
@@ -139,9 +129,10 @@ body.grid-on #flap{box-shadow:0 0 0 1px var(--rule) inset}
   color:inherit;
   text-decoration:none;
 }
-/* 너비가 모자라면 먼저 줄바꿈한다.
-   --lines 는 슬롯이 가진 행 밴드 안에 실제로 들어가는 줄 수(app.js 가 계산).
-   그 줄 수까지도 모자랄 때에만 마지막 줄에 줄임표(…)가 붙는다. */
+.f[hidden]{display:none}
+
+/* 폭이 모자라면 먼저 줄바꿈한다. --lines 는 밴드 안에 들어가는 줄 수(app.js).
+   최소 폰트 크기까지 줄이고도 그 줄 수를 넘으면 마지막 줄에 줄임표(…) */
 .t{
   display:-webkit-box;
   -webkit-box-orient:vertical;
@@ -149,35 +140,31 @@ body.grid-on #flap{box-shadow:0 0 0 1px var(--rule) inset}
           line-clamp:var(--lines,1);
   max-width:100%;
   overflow:hidden;
-  overflow-wrap:anywhere;             /* 이메일처럼 끊을 곳 없는 문자열도 줄바꿈 */
+  overflow-wrap:anywhere;
   text-overflow:ellipsis;
 }
 
-/* Director — 좌상단 (c0-7 / r0-3) */
 [data-slot="role"]{
   left:0;width:43.75%;top:0;height:25%;
   align-items:flex-start;justify-content:flex-start;
   font-size:var(--meta);font-weight:500;letter-spacing:.06em;text-transform:uppercase;
 }
-/* Busan, Paris — 우상단 (c9-16 / r0-3) */
 [data-slot="places"]{
   left:56.25%;width:43.75%;top:0;height:25%;
   align-items:flex-start;justify-content:flex-end;
   font-size:var(--meta);letter-spacing:.06em;text-transform:uppercase;text-align:right;
 }
-/* SEO Jiyeon — 중앙 (c0-16 / r4-8). 이름만 가운데 2열을 지난다 */
 [data-slot="name"]{
   left:0;width:100%;top:33.3333%;height:33.3333%;
   align-items:center;justify-content:center;
   font-size:var(--name);font-weight:400;letter-spacing:-.015em;text-align:center;
 }
-/* e-mail — 좌하단 (c0-7 / r9-12) */
 [data-slot="email"]{
   left:0;width:43.75%;top:75%;height:25%;
   align-items:flex-end;justify-content:flex-start;
   font-size:var(--meta);letter-spacing:.01em;
 }
-/* 전화번호 — 우하단 (c9-16 / r9-12). 국가별 2줄 */
+/* 전화번호는 국가별로 2줄 */
 [data-slot="phone"]{
   left:56.25%;width:43.75%;top:75%;height:25%;
   flex-direction:column;align-items:flex-end;justify-content:flex-end;
@@ -186,66 +173,20 @@ body.grid-on #flap{box-shadow:0 0 0 1px var(--rule) inset}
 [data-slot="phone"] .act{display:block;max-width:100%}
 [data-slot="phone"] .act + .act{margin-top:.28em}
 
-/* 각 정보를 터치하면 contact */
+/* 각 정보를 터치하면 contact. 밑줄은 줄바꿈된 각 줄을 따라간다 */
 .act{cursor:pointer;color:inherit;text-decoration:none}
-/* 밑줄은 글자를 따라간다 — 줄바꿈되면 각 줄 아래에 그어진다 */
 .act .t{
   text-decoration:underline;
   text-decoration-thickness:1px;
-  text-underline-offset:.08em;   /* margin 0 이라 마지막 줄이 모서리에 붙는다. 라인박스 안으로 */
+  text-underline-offset:.08em;      /* margin 0 이라 마지막 줄이 모서리에 붙는다 */
   text-decoration-color:color-mix(in srgb, currentColor 42%, transparent);
   transition:text-decoration-color .18s ease;
 }
 .act:hover .t,.act:focus-visible .t{text-decoration-color:currentColor}
 .act:focus-visible{outline:1px solid currentColor;outline-offset:2px}
 
-/* 사각형이 극단적으로 작을 때 — 정보 누락 방지: 이름만은 반드시 남긴다 */
-#card.min .f:not([data-slot="name"]){display:none}
+/* 한 줄도 들어가지 않을 만큼 작을 때 — 정보 누락 방지: 이름만은 남긴다 */
 #card.min [data-slot="name"]{top:0;height:100%}
-
-/* ── 실시간 계산 readout ────────────────────────────────────── */
-#readout{
-  position:absolute;
-  display:none;gap:.9em;
-  font-size:11px;font-weight:500;letter-spacing:.08em;
-  color:var(--chrome);
-  pointer-events:none;white-space:nowrap;
-}
-body.drawing #readout{display:flex}
-
-/* ── 크롬 ───────────────────────────────────────────────────── */
-.chrome{
-  position:fixed;top:0;left:0;right:0;
-  display:flex;align-items:flex-start;justify-content:space-between;
-  padding:calc(14px + env(safe-area-inset-top)) 14px 0;
-  pointer-events:none;
-}
-.mark{font-size:10px;font-weight:500;letter-spacing:.14em;color:var(--chrome);line-height:1.7}
-.mark span{display:block;opacity:.55;letter-spacing:.1em}
-.tools{display:flex;gap:6px;pointer-events:auto}
-.tools button,#btn-cam{
-  font:inherit;font-size:10px;font-weight:500;letter-spacing:.12em;
-  color:var(--chrome);background:rgba(255,255,255,.82);
-  border:1px solid rgba(13,15,18,.22);border-radius:2px;
-  padding:6px 9px;cursor:pointer;
-  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-  transition:background .18s ease,color .18s ease,border-color .18s ease;
-}
-.tools button:hover,#btn-cam:hover{border-color:rgba(13,15,18,.5)}
-.tools button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
-
-/* ── 하단 힌트 ──────────────────────────────────────────────── */
-.hint{
-  position:fixed;left:0;right:0;
-  bottom:calc(16px + env(safe-area-inset-bottom));
-  display:flex;flex-direction:column;align-items:center;gap:10px;
-  font-size:11px;letter-spacing:.06em;color:var(--chrome);
-  pointer-events:none;transition:opacity .4s ease;
-}
-.hint b{font-weight:500}
-.hint button{pointer-events:auto}
-body.drawing .hint{opacity:0}
-.hint.done .hint-main{opacity:.5}
 
 @media (prefers-reduced-motion:reduce){
   *{transition:none!important}
