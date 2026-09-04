@@ -8,6 +8,7 @@
    ④ 사각형을 탭하면 그 조각이 들렸다가 아래로 떨어지고 구멍이 남는다.
       구멍으로 카메라(없으면 하늘 사진)가 보이고 텍스트는 흰색으로 남는다
    ⑤ 새로 사각형을 그리면 열려 있던 구멍이 사각형 그대로 좁아지며 닫힌다
+   ⑥ 기본 화면에는 아무것도 없다. 사각형을 그려야 그 크기에 맞춰 텍스트가 드러난다
    ───────────────────────────────────────────────────────────── */
 
 const CONTACT = {
@@ -25,6 +26,12 @@ const GRID     = { cols: 16, rows: 12 };   // 노트: 16 × 12 Grid
 const MIN_W    = 40, MIN_H = 28;           // 사각형 최소 크기(px)
 const TAP      = 10;                       // 이 이하 이동은 드로잉이 아니라 탭
 const CLOSE_MS = 460;                      // style.css 의 --close 와 맞출 것
+const LH       = 1.06;                     // style.css 의 .f line-height 와 맞출 것
+
+/* 각 슬롯이 쓸 수 있는 행 밴드(16 × 12 중 세로 행 수).
+   r3 과 r8 은 그룹 사이 여백으로 항상 비운다:
+   r0-2 상단 · r3 여백 · r4-7 이름 · r8 여백 · r9-11 하단 */
+const BAND = { role:3, places:3, name:4, email:3, phone:3 };
 
 const stage   = document.getElementById('stage');
 const card    = document.getElementById('card');
@@ -56,8 +63,17 @@ setText('places', CONTACT.places);
 setText('name',   CONTACT.name);
 
 const mail = content.querySelector('[data-slot="email"]');
-mail.querySelector('.t').textContent = CONTACT.email;
 mail.href = `mailto:${CONTACT.email}`;
+{
+  // 줄바꿈이 필요하면 '@' 뒤에서 먼저 끊는다.
+  // (그래도 모자라면 CSS 의 overflow-wrap:anywhere 가 아무 데서나 끊는다)
+  const at = CONTACT.email.indexOf('@');
+  const t = mail.querySelector('.t');
+  if (at < 0) t.textContent = CONTACT.email;
+  else t.append(CONTACT.email.slice(0, at + 1),
+                document.createElement('wbr'),
+                CONTACT.email.slice(at + 1));
+}
 
 content.querySelector('[data-slot="phone"]').replaceChildren(
   ...CONTACT.phones.map(p => {
@@ -106,8 +122,27 @@ function draw(r){
   card.classList.toggle('min', tiny);
   if (tiny) name = Math.min(r.h * 0.62, fitW);
 
-  card.style.setProperty('--name', Math.max(name, 7).toFixed(2) + 'px');
-  card.style.setProperty('--meta', Math.max(meta, 7).toFixed(2) + 'px');
+  name = Math.max(name, 7);
+  meta = Math.max(meta, 7);
+  card.style.setProperty('--name', name.toFixed(2) + 'px');
+  card.style.setProperty('--meta', meta.toFixed(2) + 'px');
+
+  // 줄바꿈을 몇 줄까지 허용할지 — 밴드 높이 안에 들어가는 만큼만
+  const row = r.h / GRID.rows;
+  const lines = (slot, fontPx) => {
+    const sel = `[data-slot="${slot}"] .t`;
+    // 한 밴드를 나눠 쓰는 줄 수는 '한 층 기준'으로 센다(전화번호 2줄)
+    const share = Math.max(content.querySelectorAll(sel).length, 1);
+    const band  = (tiny && slot === 'name' ? GRID.rows : BAND[slot]) * row;
+    const n = Math.max(1, Math.floor(band / share / (fontPx * LH)));
+    for (const root of [content, holeText])
+      root.querySelectorAll(sel).forEach(t => t.style.setProperty('--lines', n));
+  };
+  lines('role',   meta);
+  lines('places', meta);
+  lines('name',   name);
+  lines('email',  meta);
+  lines('phone',  meta);          // 번호 2개가 밴드를 나눠 쓴다
 
   roSize.textContent  = `${Math.round(r.w)} × ${Math.round(r.h)}`;
   roRatio.textContent = `RATIO ${(r.w / Math.max(r.h, 1)).toFixed(2)}`;
@@ -220,7 +255,7 @@ function endDrag(e){
     return;
   }
   // 움직임이 없었던 탭 — 사각형 안쪽이고 정보 위가 아니라면 뚫거나 닫는다
-  if (!e.target.closest('.act') && card.contains(e.target)){
+  if (card.classList.contains('on') && !e.target.closest('.act') && card.contains(e.target)){
     hole ? closeHole({ hideFlap: true }) : openHole();
     hint.classList.add('done');
   }
@@ -286,7 +321,7 @@ async function startCamera(){
 btnCam.addEventListener('click', startCamera);
 
 /* ── 시작 ───────────────────────────────────────────────────── */
+// ⑥ 흰 종이만 있는 상태로 시작한다. 사각형을 그려야 텍스트가 드러난다.
 draw(defaultRect());
-paintHole({ x: 0, y: 0, w: 0, h: 0 });          // 구멍 없이 흰 종이로 시작
-requestAnimationFrame(() => card.classList.add('on'));
+paintHole({ x: 0, y: 0, w: 0, h: 0 });
 startCamera();

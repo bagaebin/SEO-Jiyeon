@@ -66,7 +66,7 @@ body.cam-on #cam{opacity:1}
   transition:opacity .25s ease;
 }
 #card.on{opacity:1}
-body.drawing #card{transition:none}
+#card:not(.on){pointer-events:none}   /* 그리기 전에는 잡히지도 않는다 */
 body.drawing .f{pointer-events:none}
 #card,#card a{-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
 
@@ -139,22 +139,29 @@ body.grid-on #flap{box-shadow:0 0 0 1px var(--rule) inset}
   color:inherit;
   text-decoration:none;
 }
+/* 너비가 모자라면 먼저 줄바꿈한다.
+   --lines 는 슬롯이 가진 행 밴드 안에 실제로 들어가는 줄 수(app.js 가 계산).
+   그 줄 수까지도 모자랄 때에만 마지막 줄에 줄임표(…)가 붙는다. */
 .t{
-  display:block;max-width:100%;
-  white-space:nowrap;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:var(--lines,1);
+          line-clamp:var(--lines,1);
+  max-width:100%;
   overflow:hidden;
-  text-overflow:ellipsis;             /* 넘치면 줄임표(…) */
+  overflow-wrap:anywhere;             /* 이메일처럼 끊을 곳 없는 문자열도 줄바꿈 */
+  text-overflow:ellipsis;
 }
 
-/* Director — 좌상단 (c0-7 / r0-2) */
+/* Director — 좌상단 (c0-7 / r0-3) */
 [data-slot="role"]{
-  left:0;width:43.75%;top:0;height:16.6667%;
+  left:0;width:43.75%;top:0;height:25%;
   align-items:flex-start;justify-content:flex-start;
   font-size:var(--meta);font-weight:500;letter-spacing:.06em;text-transform:uppercase;
 }
-/* Busan, Paris — 우상단 (c9-16 / r0-2) */
+/* Busan, Paris — 우상단 (c9-16 / r0-3) */
 [data-slot="places"]{
-  left:56.25%;width:43.75%;top:0;height:16.6667%;
+  left:56.25%;width:43.75%;top:0;height:25%;
   align-items:flex-start;justify-content:flex-end;
   font-size:var(--meta);letter-spacing:.06em;text-transform:uppercase;text-align:right;
 }
@@ -164,9 +171,9 @@ body.grid-on #flap{box-shadow:0 0 0 1px var(--rule) inset}
   align-items:center;justify-content:center;
   font-size:var(--name);font-weight:400;letter-spacing:-.015em;text-align:center;
 }
-/* e-mail — 좌하단 (c0-7 / r10-12) */
+/* e-mail — 좌하단 (c0-7 / r9-12) */
 [data-slot="email"]{
-  left:0;width:43.75%;top:83.3333%;height:16.6667%;
+  left:0;width:43.75%;top:75%;height:25%;
   align-items:flex-end;justify-content:flex-start;
   font-size:var(--meta);letter-spacing:.01em;
 }
@@ -181,12 +188,15 @@ body.grid-on #flap{box-shadow:0 0 0 1px var(--rule) inset}
 
 /* 각 정보를 터치하면 contact */
 .act{cursor:pointer;color:inherit;text-decoration:none}
+/* 밑줄은 글자를 따라간다 — 줄바꿈되면 각 줄 아래에 그어진다 */
 .act .t{
-  border-bottom:1px solid currentColor;
-  border-bottom-color:color-mix(in srgb, currentColor 42%, transparent);
-  transition:border-bottom-color .18s ease;
+  text-decoration:underline;
+  text-decoration-thickness:1px;
+  text-underline-offset:.08em;   /* margin 0 이라 마지막 줄이 모서리에 붙는다. 라인박스 안으로 */
+  text-decoration-color:color-mix(in srgb, currentColor 42%, transparent);
+  transition:text-decoration-color .18s ease;
 }
-.act:hover .t,.act:focus-visible .t{border-bottom-color:currentColor}
+.act:hover .t,.act:focus-visible .t{text-decoration-color:currentColor}
 .act:focus-visible{outline:1px solid currentColor;outline-offset:2px}
 
 /* 사각형이 극단적으로 작을 때 — 정보 누락 방지: 이름만은 반드시 남긴다 */
