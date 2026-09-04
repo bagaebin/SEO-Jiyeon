@@ -153,6 +153,15 @@ function fitInView(r){
 /* 손을 뗀 뒤 — 최소 크기보다 작게 그렸으면 명함 비율의 최소 크기까지 자라난다.
    중심은 그린 자리를 그대로 지킨다 */
 let growTimer = null;
+
+/* 자라는 중이라도 새 조작이 들어오면 즉시 끝낸다.
+   이 클래스가 남아 있으면 다음 드래그까지 width/height 트랜지션을 타서
+   사각형이 손가락을 따라오지 못하고 이전 크기에서 끌려온다 */
+function stopGrow(){
+  clearTimeout(growTimer);
+  card.classList.remove('grow');
+}
+
 function settle(r){
   if (r.w >= MIN_CARD_W && r.h >= MIN_CARD_H) return;
 
@@ -197,7 +206,7 @@ const collapsed = h => ({ x: h.x + h.w / 2, y: h.y + h.h / 2, w: 0, h: 0 });
 
 function openHole(){
   clearTimeout(closeTimer);
-  card.classList.remove('grow');     // 자라는 중이었다면 즉시 마무리하고 뚫는다
+  stopGrow();                        // 자라는 중이었다면 즉시 마무리하고 뚫는다
   hole = { ...rect };
   sheet.classList.remove('anim');     // 구멍은 즉시 열리고, 조각이 떨어지며 드러난다
   paintHole(hole);
@@ -227,6 +236,7 @@ let start = null, dragged = false;
 
 stage.addEventListener('pointerdown', e => {
   if (e.button !== undefined && e.button !== 0) return;
+  stopGrow();                         // 자라는 중이었다면 여기서 끝낸다
   askCameraOnce();                    // 첫 조작에서 카메라를 한 번 더 청한다
   start = { x: e.clientX, y: e.clientY };
   dragged = false;
