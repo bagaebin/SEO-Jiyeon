@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <title>SEO Jiyeon — Digital Business Card</title>
-<meta name="description" content="화면에 사각형을 그리면 그 비율에 맞춰 실시간으로 조판되는 디지털 명함. 한 번 더 누르면 흰 면이 펀칭된다.">
-<meta name="theme-color" content="#14161a">
+<meta name="description" content="흰 종이 위에 사각형을 그려 마스킹 영역을 정하고, 그 자리를 뚫어내는 디지털 명함.">
+<meta name="theme-color" content="#ffffff">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
@@ -13,36 +13,40 @@
 </head>
 <body>
 
-<!-- 페이지 배경: 카메라 실시간 뷰 (미허용 시 무채색 바탕) -->
+<!-- 뚫린 구멍으로만 보이는 층: 카메라 (없으면 임시 하늘 사진) -->
 <div class="backdrop">
-  <div id="ground"></div>
+  <img id="sky" src="assets/sky.jpg" alt="">
   <video id="cam" playsinline muted autoplay></video>
+</div>
+
+<!-- 흰 종이. 구멍 둘레를 네 장의 판이 채운다 -->
+<div id="sheet">
+  <div class="panel" id="pn-top"></div>
+  <div class="panel" id="pn-bottom"></div>
+  <div class="panel" id="pn-left"></div>
+  <div class="panel" id="pn-right"></div>
 </div>
 
 <!-- 드로잉 스테이지 -->
 <main id="stage" aria-label="명함을 그릴 영역">
 
-  <!-- 그려진 사각형 = 명함 -->
+  <!-- 그려진 사각형 = 마스킹 영역 -->
   <section id="card" aria-label="SEO Jiyeon 명함">
 
-    <!-- 카메라를 못 쓸 때, 뚫린 자리에 드러나는 임시 하늘 사진 -->
-    <img id="sky" src="assets/sky.jpg" alt="">
-
-    <!-- 백색 단색 면. 탭한 지점에서부터 원형으로 펀칭된다 -->
-    <div class="paper" id="paper"></div>
-
-    <!-- 흰 면 위의 내용(검정) -->
-    <div class="content" id="content">
-      <div class="grid" aria-hidden="true"></div>
-      <span class="f" data-slot="role"><span class="t">Director</span></span>
-      <span class="f" data-slot="places"><span class="t">Busan, Paris</span></span>
-      <span class="f" data-slot="name"><span class="t">SEO Jiyeon</span></span>
-      <a class="f act" data-slot="email" href="#" draggable="false"><span class="t"></span></a>
-      <span class="f" data-slot="phone"></span>
-    </div>
-
     <!-- 뚫린 자리에 남는 흰 텍스트 -->
-    <div class="content" id="content-ghost" aria-hidden="true"></div>
+    <div class="content" id="hole-text"></div>
+
+    <!-- 뚫려 나가는 조각: 흰 면 + 검정 텍스트 -->
+    <div id="flap">
+      <div class="content" id="content">
+        <div class="grid" aria-hidden="true"></div>
+        <span class="f" data-slot="role"><span class="t">Director</span></span>
+        <span class="f" data-slot="places"><span class="t">Busan, Paris</span></span>
+        <span class="f" data-slot="name"><span class="t">SEO Jiyeon</span></span>
+        <a class="f act" data-slot="email" href="#" draggable="false"><span class="t"></span></a>
+        <span class="f" data-slot="phone"></span>
+      </div>
+    </div>
 
   </section>
 
@@ -60,7 +64,7 @@
 </header>
 
 <footer id="hint" class="hint">
-  <span class="hint-main"><b>드래그</b> 명함 그리기 &nbsp;·&nbsp; <b>명함 탭</b> 펀칭 &nbsp;·&nbsp; <b>정보 탭</b> 연결</span>
+  <span class="hint-main"><b>드래그</b> 영역 지정 &nbsp;·&nbsp; <b>탭</b> 뚫어내기 &nbsp;·&nbsp; <b>정보 탭</b> 연결</span>
   <button id="btn-cam" type="button" hidden>카메라 켜기</button>
 </footer>
 

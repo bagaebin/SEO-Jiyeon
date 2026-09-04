@@ -2,16 +2,22 @@
    SEO Jiyeon — Digital Business Card
    26.09.04 수업 노트 구현
 
-   · 16 × 12 Grid            · margin 없음(내용이 사각형 모서리에 붙음)
-   · 넘치는 텍스트는 줄임표(…) · 단, 이름은 어떤 크기에서도 노출
-   · 명함을 한 번 더 탭하면 흰 면이 펀칭되고 텍스트만 흰색으로 남는다
+   화면 전체가 흰 종이다. 드래그로 마스킹 영역을 정하고, 탭하면
+   그 사각형이 들렸다가 아래로 떨어지면서 구멍이 뚫린다.
+   구멍으로는 카메라(없으면 하늘 사진)가 보이고, 텍스트는 흰색으로 남는다.
+
+   · 16 × 12 Grid  · margin 없음  · 넘치는 텍스트는 줄임표(…)
+   · 가운데 2열(c7·c8)은 항상 비운다 → 항목당 최대 7열
    ───────────────────────────────────────────────────────────── */
 
 :root{
   --paper:#fff;
-  --chrome:rgba(255,255,255,.86);
-  --vw:100vw; --vh:100vh;
+  --ink:#0d0f12;
+  --chrome:rgba(13,15,18,.62);
   --font:"Inter","Helvetica Neue",Helvetica,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+
+  --close:.46s;                        /* 구멍이 닫히는 시간 */
+  --ease-close:cubic-bezier(.4,0,.2,1);
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
@@ -19,71 +25,98 @@ html,body{height:100%}
 
 body{
   font-family:var(--font);
-  background:#14161a;
+  background:var(--paper);
   overflow:hidden;
   overscroll-behavior:none;
   -webkit-font-smoothing:antialiased;
   -webkit-tap-highlight-color:transparent;
 }
 
-/* ── 페이지 배경: 카메라 (미허용 시 무채색 바탕) ─────────────── */
-.backdrop{position:fixed;inset:0;background:#14161a}
-.backdrop > *{position:absolute;inset:0;width:100%;height:100%;display:block}
-#ground{background:linear-gradient(#191c21 0%,#24272d 55%,#2c2f35 100%)}
-#cam{object-fit:cover;opacity:0;transition:opacity .6s ease}
+/* ── 구멍으로만 보이는 층 ───────────────────────────────────── */
+.backdrop{position:fixed;inset:0;background:#c9d6e4}
+.backdrop > *{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+#cam{opacity:0;transition:opacity .6s ease}
 body.cam-on #cam{opacity:1}
+
+/* ── 흰 종이: 구멍 둘레를 채우는 네 장의 판 ─────────────────── */
+#sheet{position:fixed;inset:0;pointer-events:none}
+.panel{position:absolute;background:var(--paper)}
+/* 닫힐 때만 애니메이션한다. 뚫을 때는 즉시 열리고, 대신 조각이 떨어진다 */
+#sheet.anim .panel{
+  transition:left var(--close) var(--ease-close),
+             top var(--close) var(--ease-close),
+             width var(--close) var(--ease-close),
+             height var(--close) var(--ease-close);
+}
 
 /* ── 스테이지 ───────────────────────────────────────────────── */
 #stage{
   position:fixed;inset:0;
-  touch-action:none;                /* 드래그가 스크롤로 새지 않도록 */
+  touch-action:none;
   user-select:none;-webkit-user-select:none;
   cursor:crosshair;
 }
 
-/* 펀칭 반경. @property 로 등록해야 트랜지션이 걸린다 */
-@property --r{syntax:"<length>";inherits:true;initial-value:0px}
-
-/* ── 명함(그려진 사각형) ────────────────────────────────────── */
+/* ── 마스킹 영역 ────────────────────────────────────────────── */
 #card{
-  --ink:#0d0f12;
   --rule:rgba(13,15,18,.14);
-  --r:0px;
   position:absolute;top:0;left:0;
   width:0;height:0;
-  background:transparent;              /* 흰 면은 .paper 가 그린다 → 진짜로 뚫린다 */
-  box-shadow:0 18px 50px -18px rgba(0,0,0,.6);
-  overflow:hidden;
   opacity:0;
-  transition:opacity .25s ease, box-shadow .55s ease,
-             --r .58s cubic-bezier(.5,.02,.3,1);
-  will-change:transform,width,height;
+  transition:opacity .25s ease;
 }
-#card.punched{--r:var(--pr,150%);box-shadow:none}
-
-/* 백색 단색 면 */
-.paper{position:absolute;inset:0;background:var(--paper)}
-
-/* 카메라를 못 쓸 때 뚫린 자리에 드러나는 하늘 — 뷰포트에 고정된 층처럼 보정 */
-#sky{
-  position:absolute;
-  left:var(--wx,0);top:var(--wy,0);
-  width:var(--vw);height:var(--vh);
-  object-fit:cover;display:block;
-  transition:opacity .6s ease;
-}
-body.cam-on #sky{opacity:0}            /* 카메라가 있으면 뚫린 자리로 실제 배경이 비친다 */
 #card.on{opacity:1}
 body.drawing #card{transition:none}
-body.drawing #card .f{pointer-events:none}
-/* 링크 위에서 드래그를 시작해도 네이티브 링크 드래그가 아니라 '사각형 그리기'가 되도록 */
+body.drawing .f{pointer-events:none}
 #card,#card a{-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
+
+/* 뚫려 나가는 조각 */
+#flap{
+  position:absolute;inset:0;
+  background:var(--paper);
+  overflow:hidden;
+  transition:opacity .28s ease;
+  will-change:transform;
+}
+#card.closing #flap{opacity:0;transition-duration:.12s}   /* 구멍이 닫히는 동안 비켜 있는다 */
+
+/* 들렸다가 아래로 떨어진다 */
+@keyframes punch-fall{
+  0%{
+    transform:translate3d(0,0,0) rotate(0deg);
+    box-shadow:0 0 0 rgba(0,0,0,0);
+    animation-timing-function:cubic-bezier(.2,.85,.3,1);
+  }
+  22%{
+    transform:translate3d(0,-16px,0) rotate(-.7deg);
+    box-shadow:0 26px 46px -20px rgba(0,0,0,.42);
+    animation-timing-function:cubic-bezier(.5,0,.92,.62);
+  }
+  100%{
+    transform:translate3d(0,130vh,0) rotate(7deg);
+    box-shadow:0 26px 46px -20px rgba(0,0,0,0);
+  }
+}
+#card.punched #flap{
+  animation:punch-fall .82s forwards;
+  pointer-events:none;
+}
 
 /* ── 내용 층 ────────────────────────────────────────────────── */
 .content{position:absolute;inset:0;color:var(--ink)}
+/* 구멍 안에서만 존재한다. 닫혀 있을 때 흰 텍스트의 그림자가
+   흰 종이 위로 비쳐 보이지 않도록 아예 숨긴다 */
+#hole-text{
+  --ink:#fff;
+  --rule:rgba(255,255,255,.45);
+  text-shadow:0 1px 16px rgba(0,0,0,.3);
+  opacity:0;
+  transition:opacity .18s ease;
+}
+#card.punched #hole-text{opacity:1;transition-duration:0s}
 
 /* 16 × 12 그리드 오버레이 */
-.content .grid{
+.grid{
   position:absolute;inset:0;
   opacity:0;
   transition:opacity .2s ease;
@@ -91,10 +124,13 @@ body.drawing #card .f{pointer-events:none}
     repeating-linear-gradient(to right,  var(--rule) 0 1px, transparent 1px 6.25%),
     repeating-linear-gradient(to bottom, var(--rule) 0 1px, transparent 1px 8.3333%);
 }
-body.drawing .content .grid,
-body.grid-on .content .grid{opacity:1}
+body.drawing .grid,body.grid-on .grid{opacity:1}
+/* 그리드를 켰을 때만 마스킹 영역의 경계를 보여준다 */
+body.grid-on #flap{box-shadow:0 0 0 1px var(--rule) inset}
 
-/* ── 슬롯 = 그리드 좌표. margin 없음 ────────────────────────── */
+/* ── 슬롯 = 그리드 좌표. margin 없음 ────────────────────────
+   가운데 2열(c7·c8)은 항상 비운다:
+   왼쪽 항목은 c0–c7, 오른쪽 항목은 c9–c16 → 각각 7열(43.75%) */
 .f{
   position:absolute;
   display:flex;
@@ -103,35 +139,34 @@ body.grid-on .content .grid{opacity:1}
   color:inherit;
   text-decoration:none;
 }
-/* 넘치면 줄임표(…) */
 .t{
   display:block;max-width:100%;
   white-space:nowrap;
   overflow:hidden;
-  text-overflow:ellipsis;
+  text-overflow:ellipsis;             /* 넘치면 줄임표(…) */
 }
 
-/* Director — 좌상단 (c0-8 / r0-2) */
+/* Director — 좌상단 (c0-7 / r0-2) */
 [data-slot="role"]{
-  left:0;width:50%;top:0;height:16.6667%;
+  left:0;width:43.75%;top:0;height:16.6667%;
   align-items:flex-start;justify-content:flex-start;
   font-size:var(--meta);font-weight:500;letter-spacing:.06em;text-transform:uppercase;
 }
-/* Busan, Paris — 우상단 (c8-16 / r0-2) */
+/* Busan, Paris — 우상단 (c9-16 / r0-2) */
 [data-slot="places"]{
-  left:50%;width:50%;top:0;height:16.6667%;
+  left:56.25%;width:43.75%;top:0;height:16.6667%;
   align-items:flex-start;justify-content:flex-end;
   font-size:var(--meta);letter-spacing:.06em;text-transform:uppercase;text-align:right;
 }
-/* SEO Jiyeon — 중앙 (c0-16 / r4-8) */
+/* SEO Jiyeon — 중앙 (c0-16 / r4-8). 이름만 가운데 2열을 지난다 */
 [data-slot="name"]{
   left:0;width:100%;top:33.3333%;height:33.3333%;
   align-items:center;justify-content:center;
   font-size:var(--name);font-weight:400;letter-spacing:-.015em;text-align:center;
 }
-/* e-mail — 좌하단 (c0-9 / r10-12) */
+/* e-mail — 좌하단 (c0-7 / r10-12) */
 [data-slot="email"]{
-  left:0;width:56.25%;top:83.3333%;height:16.6667%;
+  left:0;width:43.75%;top:83.3333%;height:16.6667%;
   align-items:flex-end;justify-content:flex-start;
   font-size:var(--meta);letter-spacing:.01em;
 }
@@ -144,7 +179,7 @@ body.grid-on .content .grid{opacity:1}
 [data-slot="phone"] .act{display:block;max-width:100%}
 [data-slot="phone"] .act + .act{margin-top:.28em}
 
-/* ③ 각 정보를 터치하면 contact */
+/* 각 정보를 터치하면 contact */
 .act{cursor:pointer;color:inherit;text-decoration:none}
 .act .t{
   border-bottom:1px solid currentColor;
@@ -158,35 +193,12 @@ body.grid-on .content .grid{opacity:1}
 #card.min .f:not([data-slot="name"]){display:none}
 #card.min [data-slot="name"]{top:0;height:100%}
 
-/* ── 펀칭 ───────────────────────────────────────────────────
-   탭한 지점을 중심으로 흰 면(.paper)과 검정 텍스트(#content)에
-   원형 구멍을 뚫는다. 구멍 안에서는 뒤쪽(카메라 / 하늘 사진)이
-   드러나고, 같은 자리에 흰 텍스트(#content-ghost)만 남는다. */
-#paper,#content{
-  -webkit-mask-image:radial-gradient(circle at var(--px,50%) var(--py,50%),
-                     transparent calc(var(--r) - .5px), #000 var(--r));
-          mask-image:radial-gradient(circle at var(--px,50%) var(--py,50%),
-                     transparent calc(var(--r) - .5px), #000 var(--r));
-  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
-}
-#content-ghost{
-  --ink:#fff;
-  --rule:rgba(255,255,255,.45);
-  pointer-events:none;
-  text-shadow:0 1px 16px rgba(0,0,0,.3);
-  -webkit-mask-image:radial-gradient(circle at var(--px,50%) var(--py,50%),
-                     #000 calc(var(--r) - .5px), transparent var(--r));
-          mask-image:radial-gradient(circle at var(--px,50%) var(--py,50%),
-                     #000 calc(var(--r) - .5px), transparent var(--r));
-  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
-}
-
 /* ── 실시간 계산 readout ────────────────────────────────────── */
 #readout{
   position:absolute;
   display:none;gap:.9em;
   font-size:11px;font-weight:500;letter-spacing:.08em;
-  color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.6);
+  color:var(--chrome);
   pointer-events:none;white-space:nowrap;
 }
 body.drawing #readout{display:flex}
@@ -198,35 +210,34 @@ body.drawing #readout{display:flex}
   padding:calc(14px + env(safe-area-inset-top)) 14px 0;
   pointer-events:none;
 }
-.mark{
-  font-size:10px;font-weight:500;letter-spacing:.14em;
-  color:var(--chrome);text-shadow:0 1px 6px rgba(0,0,0,.5);line-height:1.7;
-}
-.mark span{display:block;opacity:.6;letter-spacing:.1em}
+.mark{font-size:10px;font-weight:500;letter-spacing:.14em;color:var(--chrome);line-height:1.7}
+.mark span{display:block;opacity:.55;letter-spacing:.1em}
 .tools{display:flex;gap:6px;pointer-events:auto}
 .tools button,#btn-cam{
   font:inherit;font-size:10px;font-weight:500;letter-spacing:.12em;
-  color:var(--chrome);background:rgba(13,15,18,.34);
-  border:1px solid rgba(255,255,255,.28);border-radius:2px;
+  color:var(--chrome);background:rgba(255,255,255,.82);
+  border:1px solid rgba(13,15,18,.22);border-radius:2px;
   padding:6px 9px;cursor:pointer;
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-  transition:background .18s ease,color .18s ease;
+  transition:background .18s ease,color .18s ease,border-color .18s ease;
 }
-.tools button:hover,#btn-cam:hover{background:rgba(13,15,18,.6)}
-.tools button[aria-pressed="true"]{background:#fff;color:#0d0f12;border-color:#fff}
+.tools button:hover,#btn-cam:hover{border-color:rgba(13,15,18,.5)}
+.tools button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
 
 /* ── 하단 힌트 ──────────────────────────────────────────────── */
 .hint{
   position:fixed;left:0;right:0;
   bottom:calc(16px + env(safe-area-inset-bottom));
   display:flex;flex-direction:column;align-items:center;gap:10px;
-  font-size:11px;letter-spacing:.06em;
-  color:var(--chrome);text-shadow:0 1px 6px rgba(0,0,0,.55);
+  font-size:11px;letter-spacing:.06em;color:var(--chrome);
   pointer-events:none;transition:opacity .4s ease;
 }
 .hint b{font-weight:500}
 .hint button{pointer-events:auto}
 body.drawing .hint{opacity:0}
-.hint.done .hint-main{opacity:.45}
+.hint.done .hint-main{opacity:.5}
 
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important}
+  #card.punched #flap{animation-duration:.01ms}
+}

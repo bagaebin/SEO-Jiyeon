@@ -1,12 +1,13 @@
 /* ─────────────────────────────────────────────────────────────
    SEO Jiyeon — Digital Business Card   (26.09.04 노트 구현)
 
-   ① 화면의 한 지점을 터치해 다른 지점으로 끌고 가 사각형을 그린다
+   화면 전체가 흰 종이다.
+   ① 한 지점을 터치해 다른 지점으로 끌고 가 사각형(마스킹 영역)을 그린다
    ② 그려진 사각형의 너비·비율에 따라 조판을 실시간으로 계산한다
    ③ 각 정보를 터치하면 contact 된다
-   ④ 사각형을 한 번 더 터치하면 흰 면이 그 지점에서부터 펀칭되어
-      뒤쪽(카메라 / 카메라가 없으면 하늘 사진)이 드러나고,
-      텍스트만 흰색으로 남는다
+   ④ 사각형을 탭하면 그 조각이 들렸다가 아래로 떨어지고 구멍이 남는다.
+      구멍으로 카메라(없으면 하늘 사진)가 보이고 텍스트는 흰색으로 남는다
+   ⑤ 새로 사각형을 그리면 열려 있던 구멍이 사각형 그대로 좁아지며 닫힌다
    ───────────────────────────────────────────────────────────── */
 
 const CONTACT = {
@@ -20,14 +21,23 @@ const CONTACT = {
   ]
 };
 
-const GRID = { cols: 16, rows: 12 };   // 노트: 16 × 12 Grid
-const MIN_W = 40, MIN_H = 28;          // 사각형 최소 크기(px)
-const TAP   = 10;                      // 이 이하 이동은 드로잉이 아니라 탭
+const GRID     = { cols: 16, rows: 12 };   // 노트: 16 × 12 Grid
+const MIN_W    = 40, MIN_H = 28;           // 사각형 최소 크기(px)
+const TAP      = 10;                       // 이 이하 이동은 드로잉이 아니라 탭
+const CLOSE_MS = 460;                      // style.css 의 --close 와 맞출 것
 
 const stage   = document.getElementById('stage');
 const card    = document.getElementById('card');
+const flap    = document.getElementById('flap');
 const content = document.getElementById('content');
-const ghost   = document.getElementById('content-ghost');
+const holeText= document.getElementById('hole-text');
+const sheet   = document.getElementById('sheet');
+const panel   = {
+  top   : document.getElementById('pn-top'),
+  bottom: document.getElementById('pn-bottom'),
+  left  : document.getElementById('pn-left'),
+  right : document.getElementById('pn-right')
+};
 const readout = document.getElementById('readout');
 const roSize  = document.getElementById('ro-size');
 const roRatio = document.getElementById('ro-ratio');
@@ -49,28 +59,29 @@ const mail = content.querySelector('[data-slot="email"]');
 mail.querySelector('.t').textContent = CONTACT.email;
 mail.href = `mailto:${CONTACT.email}`;
 
-const phone = content.querySelector('[data-slot="phone"]');
-phone.replaceChildren(...CONTACT.phones.map(p => {
-  const a = document.createElement('a');
-  a.className = 'act';
-  a.href = `tel:${p.dial}`;
-  a.draggable = false;
-  const t = document.createElement('span');
-  t.className = 't';
-  t.textContent = p.label;
-  a.append(t);
-  return a;
-}));
+content.querySelector('[data-slot="phone"]').replaceChildren(
+  ...CONTACT.phones.map(p => {
+    const a = document.createElement('a');
+    a.className = 'act';
+    a.href = `tel:${p.dial}`;
+    a.draggable = false;
+    const t = document.createElement('span');
+    t.className = 't';
+    t.textContent = p.label;
+    a.append(t);
+    return a;
+  })
+);
 
-/* 뚫린 자리에 남을 흰 텍스트 사본 — 보이기만 하고 조작은 아래 실제 내용이 받는다 */
-function syncGhost(){
-  ghost.replaceChildren(...[...content.children].map(n => n.cloneNode(true)));
-  ghost.querySelectorAll('a').forEach(a => {
-    a.removeAttribute('href');
-    a.tabIndex = -1;
-  });
+/* 구멍 안에 남을 흰 텍스트 — 같은 내용, 같은 자리. 보이는 쪽만 조작을 받는다 */
+holeText.replaceChildren(...[...content.children].map(n => n.cloneNode(true)));
+function setActiveLayer(punched){
+  holeText.inert = !punched;
+  content.inert  = punched;
+  holeText.setAttribute('aria-hidden', String(!punched));
+  content.setAttribute('aria-hidden', String(punched));
 }
-syncGhost();
+setActiveLayer(false);
 
 /* ── ② 사각형 → 조판 실시간 계산 ───────────────────────────── */
 let rect = null;
@@ -82,10 +93,6 @@ function draw(r){
   card.style.width  = r.w + 'px';
   card.style.height = r.h + 'px';
 
-  // 펀칭된 창이 '뷰포트에 고정된 뒤쪽 층'처럼 보이도록 역보정
-  card.style.setProperty('--wx', -r.x + 'px');
-  card.style.setProperty('--wy', -r.y + 'px');
-
   // 그리드 한 칸을 기준 단위로 삼는다 → 너비와 비율이 동시에 반영된다
   const unit = Math.min(r.w / GRID.cols, r.h / GRID.rows);
 
@@ -94,15 +101,13 @@ function draw(r){
   let name = Math.min(unit * 2.05, fitW);
   let meta = Math.min(unit * 0.80, name * 0.46);
 
-  // 사각형이 극단적으로 작을 때만 이름만 남긴다(정보 누락 방지의 최후 방어선).
-  // 그 위 구간에서는 모든 정보를 유지하고 넘치는 부분만 줄임표로 처리한다.
+  // 사각형이 극단적으로 작을 때만 이름만 남긴다(정보 누락 방지의 최후 방어선)
   const tiny = unit < 4.0;
   card.classList.toggle('min', tiny);
   if (tiny) name = Math.min(r.h * 0.62, fitW);
 
   card.style.setProperty('--name', Math.max(name, 7).toFixed(2) + 'px');
   card.style.setProperty('--meta', Math.max(meta, 7).toFixed(2) + 'px');
-  card.style.setProperty('--pr', Math.hypot(r.w, r.h).toFixed(0) + 'px');
 
   roSize.textContent  = `${Math.round(r.w)} × ${Math.round(r.h)}`;
   roRatio.textContent = `RATIO ${(r.w / Math.max(r.h, 1)).toFixed(2)}`;
@@ -121,23 +126,61 @@ function normalize(ax, ay, bx, by){
   return { x, y, w, h };
 }
 
-/* 기본값: 표준 명함 비율(91:55)로 화면 중앙에 한 장 놓아둔다 */
+/* 기본값: 표준 명함 비율(91:55)로 화면 중앙에 한 장 */
 function defaultRect(){
   const W = stage.clientWidth, H = stage.clientHeight;
   const w = Math.min(W * 0.78, 520, H * 0.72 * (91 / 55));
   return { x: (W - w) / 2, y: (H - w * 55 / 91) / 2, w, h: w * 55 / 91 };
 }
 
-/* ── ④ 펀칭 ────────────────────────────────────────────────── */
-function punchAt(clientX, clientY){
-  const open = !card.classList.contains('punched');
-  if (open){                                 // 뚫을 때만 중심을 옮긴다(닫을 땐 뚫린 자리로 되돌아간다)
-    const b = card.getBoundingClientRect();
-    card.style.setProperty('--px', (clientX - b.left).toFixed(0) + 'px');
-    card.style.setProperty('--py', (clientY - b.top).toFixed(0) + 'px');
-    void card.offsetWidth;                   // 중심을 먼저 확정한 뒤 반지름을 키운다
-  }
-  card.classList.toggle('punched', open);
+/* ── ④⑤ 구멍 ───────────────────────────────────────────────
+   구멍 자체는 그리지 않는다. 네 장의 흰 판이 구멍 둘레를 채울 뿐이다.
+   판을 움직이면 구멍이 사각형 그대로 열리고 닫힌다. */
+let hole = null, closeTimer = null;
+
+const place = (el, x, y, w, h) => {
+  el.style.left   = x + 'px';
+  el.style.top    = y + 'px';
+  el.style.width  = Math.max(0, w) + 'px';
+  el.style.height = Math.max(0, h) + 'px';
+};
+
+function paintHole(h){
+  const W = window.innerWidth, H = window.innerHeight;
+  place(panel.top,    0,         0,         W,                 h.y);
+  place(panel.bottom, 0,         h.y + h.h, W,                 H - (h.y + h.h));
+  place(panel.left,   0,         h.y,       h.x,               h.h);
+  place(panel.right,  h.x + h.w, h.y,       W - (h.x + h.w),   h.h);
+}
+
+const collapsed = h => ({ x: h.x + h.w / 2, y: h.y + h.h / 2, w: 0, h: 0 });
+
+function openHole(){
+  clearTimeout(closeTimer);
+  hole = { ...rect };
+  sheet.classList.remove('anim');     // 구멍은 즉시 열린다. 대신 조각이 떨어지며 드러난다
+  paintHole(hole);
+  void sheet.offsetWidth;
+  card.classList.add('punched');
+  setActiveLayer(true);
+}
+
+/* hideFlap: 같은 자리에서 닫을 때는 조각이 구멍을 가리지 않도록 잠시 비켜 준다 */
+function closeHole({ hideFlap }){
+  if (!hole) return;
+  card.classList.remove('punched');
+  setActiveLayer(false);
+  if (hideFlap) card.classList.add('closing');
+
+  sheet.classList.add('anim');        // ⑤ 사각형 그대로 좁아진다
+  paintHole(collapsed(hole));
+
+  clearTimeout(closeTimer);
+  closeTimer = setTimeout(() => {
+    hole = null;
+    sheet.classList.remove('anim');
+    card.classList.remove('closing');
+  }, CLOSE_MS);
 }
 
 /* ── ① 드래그로 사각형 그리기 ──────────────────────────────── */
@@ -159,7 +202,7 @@ stage.addEventListener('pointermove', e => {
     dragged = true;
     try { stage.setPointerCapture(e.pointerId); } catch {}
     document.body.classList.add('drawing');
-    card.classList.remove('punched');     // 새로 그리면 흰 면부터 다시
+    closeHole({ hideFlap: false });   // 열려 있던 구멍은 닫으면서 새로 그린다
     card.classList.add('on');
     hint.classList.add('done');
   }
@@ -176,14 +219,17 @@ function endDrag(e){
     document.body.classList.remove('drawing');
     return;
   }
-  // 움직임이 없었던 탭 — 명함 안쪽이고 정보 위가 아니라면 펀칭
+  // 움직임이 없었던 탭 — 사각형 안쪽이고 정보 위가 아니라면 뚫거나 닫는다
   if (!e.target.closest('.act') && card.contains(e.target)){
-    punchAt(e.clientX, e.clientY);
+    hole ? closeHole({ hideFlap: true }) : openHole();
     hint.classList.add('done');
   }
 }
 stage.addEventListener('pointerup', endDrag);
-stage.addEventListener('pointercancel', () => { start = null; document.body.classList.remove('drawing'); });
+stage.addEventListener('pointercancel', () => {
+  start = null;
+  document.body.classList.remove('drawing');
+});
 
 /* 드래그로 끝난 포인터가 링크 클릭으로 새는 것을 막는다.
    (e.detail === 0 은 키보드 Enter → 그대로 통과시킨다) */
@@ -198,28 +244,28 @@ btnGrid.addEventListener('click', () => {
 });
 
 btnReset.addEventListener('click', () => {
-  card.classList.remove('punched');
+  closeHole({ hideFlap: false });
   card.classList.add('on');
   hint.classList.add('done');
   draw(defaultRect());
 });
 
-/* 뷰포트가 바뀌면 그려둔 사각형을 비율 그대로 옮긴다 */
+/* 뷰포트가 바뀌면 그려둔 사각형과 구멍을 비율 그대로 옮긴다 */
 let prevW = window.innerWidth, prevH = window.innerHeight;
-function syncViewport(){
+window.addEventListener('resize', () => {
   const W = window.innerWidth, H = window.innerHeight;
-  document.documentElement.style.setProperty('--vw', W + 'px');
-  document.documentElement.style.setProperty('--vh', H + 'px');
-  if (rect && prevW && prevH){
-    const sx = W / prevW, sy = H / prevH;
-    draw(normalize(rect.x * sx, rect.y * sy,
-                   (rect.x + rect.w) * sx, (rect.y + rect.h) * sy));
+  const sx = W / prevW, sy = H / prevH;
+  if (rect) draw(normalize(rect.x * sx, rect.y * sy,
+                           (rect.x + rect.w) * sx, (rect.y + rect.h) * sy));
+  if (hole){
+    hole = { x: hole.x * sx, y: hole.y * sy, w: hole.w * sx, h: hole.h * sy };
+    sheet.classList.remove('anim');
+    paintHole(hole);
   }
   prevW = W; prevH = H;
-}
-window.addEventListener('resize', syncViewport);
+});
 
-/* ── ★ 카메라: 허용 시 실시간 배경, 아니면 하늘 사진이 펀칭 자리에 ── */
+/* ── ★ 카메라: 허용하면 구멍으로 실시간 화면, 아니면 하늘 사진 ── */
 async function startCamera(){
   if (!navigator.mediaDevices?.getUserMedia) return false;
   try{
@@ -232,8 +278,7 @@ async function startCamera(){
     btnCam.hidden = true;
     return true;
   }catch{
-    // 카메라를 못 쓰면 뚫린 자리에 임시 하늘 사진이 드러난다
-    document.body.classList.remove('cam-on');
+    document.body.classList.remove('cam-on');   // → assets/sky.jpg
     btnCam.hidden = false;
     return false;
   }
@@ -241,7 +286,7 @@ async function startCamera(){
 btnCam.addEventListener('click', startCamera);
 
 /* ── 시작 ───────────────────────────────────────────────────── */
-syncViewport();
 draw(defaultRect());
+paintHole({ x: 0, y: 0, w: 0, h: 0 });          // 구멍 없이 흰 종이로 시작
 requestAnimationFrame(() => card.classList.add('on'));
 startCamera();
