@@ -23,9 +23,13 @@ const CONTACT = {
 };
 
 const GRID     = { cols: 16, rows: 12 };   // 노트: 16 × 12 Grid
-/* 사각형 최소 크기. 최소 폰트(아래 MIN_NAME)로도 이름 한 줄이 온전히 들어가는
-   크기를 바닥으로 둔다 → 아무리 작게 그려도 이름은 잘리지 않는다 */
-const MIN_W    = 120, MIN_H = 76;
+/* 드래그 중에는 실제 지점을 그대로 따라간다.
+   손을 뗐을 때 이보다 작으면 '명함 비율'의 최소 크기까지 자라난다.
+   폭 120px 은 최소 폰트(아래 MIN_NAME)로도 이름 한 줄이 온전히 들어가는 크기 */
+const CARD_RATIO = 91 / 55;
+const MIN_CARD_W = 120;
+const MIN_CARD_H = MIN_CARD_W / CARD_RATIO;   // ≈ 72.5
+const GROW_MS    = 380;                       // style.css 의 --grow 와 맞출 것
 const TAP      = 10;                       // 이 이하 이동은 드로잉이 아니라 탭
 const CLOSE_MS = 460;                      // style.css 의 --close 와 맞출 것
 const LH       = 1.06;                     // style.css 의 .f line-height 와 맞출 것
@@ -127,14 +131,41 @@ function draw(r){
   card.style.setProperty('--meta', meta.toFixed(2) + 'px');
 }
 
+/* 드래그한 두 지점을 그대로 사각형으로 (화면 밖으로만 나가지 않게) */
 function normalize(ax, ay, bx, by){
+  return fitInView({
+    x: Math.min(ax, bx), y: Math.min(ay, by),
+    w: Math.abs(bx - ax), h: Math.abs(by - ay)
+  });
+}
+
+function fitInView(r){
   const W = stage.clientWidth, H = stage.clientHeight;
-  let x = Math.min(ax, bx), y = Math.min(ay, by);
-  let w = Math.min(Math.max(Math.abs(bx - ax), MIN_W), W);
-  let h = Math.min(Math.max(Math.abs(by - ay), MIN_H), H);
-  x = Math.max(0, Math.min(x, W - w));
-  y = Math.max(0, Math.min(y, H - h));
-  return { x, y, w, h };
+  const w = Math.min(Math.max(r.w, 1), W);
+  const h = Math.min(Math.max(r.h, 1), H);
+  return {
+    x: Math.max(0, Math.min(r.x, W - w)),
+    y: Math.max(0, Math.min(r.y, H - h)),
+    w, h
+  };
+}
+
+/* 손을 뗀 뒤 — 최소 크기보다 작게 그렸으면 명함 비율의 최소 크기까지 자라난다.
+   중심은 그린 자리를 그대로 지킨다 */
+let growTimer = null;
+function settle(r){
+  if (r.w >= MIN_CARD_W && r.h >= MIN_CARD_H) return;
+
+  const target = fitInView({
+    x: r.x + r.w / 2 - MIN_CARD_W / 2,
+    y: r.y + r.h / 2 - MIN_CARD_H / 2,
+    w: MIN_CARD_W, h: MIN_CARD_H
+  });
+
+  card.classList.add('grow');
+  draw(target);
+  clearTimeout(growTimer);
+  growTimer = setTimeout(() => card.classList.remove('grow'), GROW_MS);
 }
 
 function defaultRect(){
@@ -166,6 +197,7 @@ const collapsed = h => ({ x: h.x + h.w / 2, y: h.y + h.h / 2, w: 0, h: 0 });
 
 function openHole(){
   clearTimeout(closeTimer);
+  card.classList.remove('grow');     // 자라는 중이었다면 즉시 마무리하고 뚫는다
   hole = { ...rect };
   sheet.classList.remove('anim');     // 구멍은 즉시 열리고, 조각이 떨어지며 드러난다
   paintHole(hole);
@@ -221,7 +253,9 @@ function endDrag(e){
   start = null;
 
   if (dragged){
-    draw(normalize(from.x, from.y, e.clientX, e.clientY));
+    const r = normalize(from.x, from.y, e.clientX, e.clientY);
+    draw(r);
+    settle(r);                       // 너무 작으면 명함 비율로 자라난다
     return;
   }
   // 움직임이 없었던 탭 — 사각형 안쪽이고 정보 위가 아니라면 뚫거나 닫는다

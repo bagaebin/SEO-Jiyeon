@@ -15,6 +15,8 @@
   --font:"Inter","Helvetica Neue",Helvetica,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
   --close:.46s;
   --ease-close:cubic-bezier(.4,0,.2,1);
+  --grow:.38s;
+  --ease-grow:cubic-bezier(.2,1.12,.3,1);   /* 살짝 넘겼다 자리잡는다 */
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
@@ -63,6 +65,13 @@ body.cam-on #cam{opacity:1}
 }
 #card.on{opacity:1}
 #card:not(.on){pointer-events:none}
+/* 너무 작게 그렸을 때만 — 명함 비율의 최소 크기까지 자라나는 동안 */
+#card.grow{
+  transition:opacity .25s ease,
+             transform var(--grow) var(--ease-grow),
+             width     var(--grow) var(--ease-grow),
+             height    var(--grow) var(--ease-grow);
+}
 #card,#card a{-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
 
 /* 뚫려 나가는 조각 — 빈 흰 면 */
