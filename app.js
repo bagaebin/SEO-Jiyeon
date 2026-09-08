@@ -282,20 +282,26 @@ card.addEventListener('click', e => {
   if (dragged && e.detail !== 0){ e.preventDefault(); e.stopPropagation(); }
 }, true);
 
-/* 뷰포트가 바뀌면 그려둔 사각형과 구멍을 비율 그대로 옮긴다 */
+/* 뷰포트가 바뀌면 그려둔 사각형과 구멍을 비율 그대로 옮긴다.
+   구멍이 닫혀 있을 때도 반드시 다시 칠해야 한다 — 안 그러면 흰 판이 이전
+   화면 크기로 남아, 넓어진 쪽으로 뒤쪽 카메라·이미지가 드러난다 */
+const NO_HOLE = { x: 0, y: 0, w: 0, h: 0 };
+
 let prevW = window.innerWidth, prevH = window.innerHeight;
-window.addEventListener('resize', () => {
+function reflow(){
   const W = window.innerWidth, H = window.innerHeight;
-  const sx = W / prevW, sy = H / prevH;
+  const sx = W / (prevW || W), sy = H / (prevH || H);
+  prevW = W; prevH = H;
+
   if (rect) draw(normalize(rect.x * sx, rect.y * sy,
                            (rect.x + rect.w) * sx, (rect.y + rect.h) * sy));
-  if (hole){
-    hole = { x: hole.x * sx, y: hole.y * sy, w: hole.w * sx, h: hole.h * sy };
-    sheet.classList.remove('anim');
-    paintHole(hole);
-  }
-  prevW = W; prevH = H;
-});
+  if (hole) hole = { x: hole.x * sx, y: hole.y * sy, w: hole.w * sx, h: hole.h * sy };
+
+  sheet.classList.remove('anim');
+  paintHole(hole ?? NO_HOLE);
+}
+window.addEventListener('resize', reflow);
+window.addEventListener('orientationchange', reflow);
 
 /* ── 카메라: 허용하면 구멍으로 실시간 화면, 아니면 하늘 사진 ── */
 let camAsked = false;
@@ -323,5 +329,5 @@ function askCameraOnce(){
 
 /* ── 시작 ───────────────────────────────────────────────────── */
 draw(defaultRect());                   // 사각형은 잡아두되 보이지 않는다
-paintHole({ x: 0, y: 0, w: 0, h: 0 }); // 구멍 없이 흰 종이로 시작
+paintHole(NO_HOLE);                    // 구멍 없이 흰 종이로 시작
 startCamera();

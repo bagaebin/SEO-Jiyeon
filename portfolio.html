@@ -3,12 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<title>SEO Jiyeon</title>
+<title>SEO Jiyeon — Portfolio</title>
+<meta name="robots" content="noindex">
 <meta name="theme-color" content="#ffffff">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=10">
+<style>
+  /* 포트폴리오용 — 연락처는 블러 처리한다. 글자 크기에 따라 함께 조절되도록 em */
+  [data-slot="email"] .t,
+  [data-slot="phone"] .t{
+    filter:blur(.2em);
+    user-select:none;-webkit-user-select:none;
+  }
+  [data-slot="email"],
+  [data-slot="phone"] .act{cursor:default}
+</style>
 </head>
 <body>
 
@@ -49,5 +60,26 @@
 </main>
 
 <script src="app.js?v=10"></script>
+<script>
+/* 포트폴리오 사본에는 실제 연락처를 담지 않는다.
+   블러는 화면에만 걸리고 원문은 소스에 그대로 남으므로, 값 자체를 자리표시자로
+   바꾸고 mailto:/tel: 링크도 떼어 둔다. 길이는 원본과 맞춰 조판이 같게 보인다. */
+(() => {
+  const mail = document.querySelector('[data-slot="email"]');
+  mail.removeAttribute('href');
+  const t = mail.querySelector('.t');
+  const dummy = 'portfolio@example.com';
+  const at = dummy.indexOf('@');
+  t.replaceChildren(dummy.slice(0, at + 1),
+                    document.createElement('wbr'),
+                    dummy.slice(at + 1));
+
+  const masked = ['+82 10 0000 0000', '+33 00 00 00 00 00'];
+  document.querySelectorAll('[data-slot="phone"] .act').forEach((a, i) => {
+    a.removeAttribute('href');
+    a.querySelector('.t').textContent = masked[i] ?? '';
+  });
+})();
+</script>
 </body>
 </html>
