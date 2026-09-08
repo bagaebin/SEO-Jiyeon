@@ -194,12 +194,26 @@ const place = (el, x, y, w, h) => {
   el.style.height = Math.max(0, h) + 'px';
 };
 
+/* 판의 경계는 디바이스 픽셀에 맞춘다. 소수점 좌표에서 두 판이 맞닿으면
+   브라우저가 레이어별로 가장자리를 반올림하면서 1px 틈이 생기고,
+   그 틈으로 뒤쪽 카메라·이미지가 가는 선처럼 새어 보인다.
+   네 판이 같은 수(y0·y1·x0·x1)를 공유하도록 해서 어긋날 여지를 없앤다 */
 function paintHole(h){
   const W = window.innerWidth, H = window.innerHeight;
-  place(panel.top,    0,         0,         W,               h.y);
-  place(panel.bottom, 0,         h.y + h.h, W,               H - (h.y + h.h));
-  place(panel.left,   0,         h.y,       h.x,             h.h);
-  place(panel.right,  h.x + h.w, h.y,       W - (h.x + h.w), h.h);
+  const dpr = window.devicePixelRatio || 1;
+  const snap = v => Math.round(v * dpr) / dpr;
+
+  const x0 = snap(h.x), x1 = snap(h.x + h.w);
+  const y0 = snap(h.y), y1 = snap(h.y + h.h);
+
+  // 좌·우 판을 위아래로 1 디바이스 픽셀씩 늘려 상·하 판과 겹치게 한다.
+  // 판끼리 맞대면 소수점 반올림으로 틈이 날 수 있는데, 같은 흰색이라
+  // 겹쳐도 보이지 않는다. 구멍 쪽으로는 넘기지 않는다.
+  const bleed = 1 / dpr;
+  place(panel.top,    0,  0,           W,      y0);
+  place(panel.bottom, 0,  y1,          W,      H - y1);
+  place(panel.left,   0,  y0 - bleed,  x0,     (y1 - y0) + bleed * 2);
+  place(panel.right,  x1, y0 - bleed,  W - x1, (y1 - y0) + bleed * 2);
 }
 
 const collapsed = h => ({ x: h.x + h.w / 2, y: h.y + h.h / 2, w: 0, h: 0 });
@@ -228,6 +242,9 @@ function closeHole({ hideFlap }){
     hole = null;
     sheet.classList.remove('anim');
     card.classList.remove('closing');
+    // 다 닫히면 한 장으로 되돌린다. 모인 자리에 경계를 남겨 두면
+    // 그 선이 화면을 가로질러 계속 보인다
+    paintHole(NO_HOLE);
   }, CLOSE_MS);
 }
 
